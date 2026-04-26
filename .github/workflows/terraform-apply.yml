@@ -35,6 +35,7 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
     outputs:
       terraform-version: ${{ steps.check_tf_version.outputs.terraform-version }}
+      has-changes: ${{ steps.plan.outputs.exitcode == '2' }}
 
     steps:
       - name: Checkout
@@ -86,7 +87,12 @@ jobs:
         id: plan
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: terraform plan -no-color -out=tfplan
+        run: |
+          set +e
+          terraform plan -no-color -detailed-exitcode -out=tfplan
+          TF_EXIT_CODE=$?
+          echo "exitcode=$TF_EXIT_CODE" >> $GITHUB_OUTPUT
+          exit $TF_EXIT_CODE
         continue-on-error: true
 
       - name: Upload Plan Artifact
@@ -121,12 +127,13 @@ jobs:
             });
 
       - name: Terraform Plan Status
-        if: steps.plan.outcome == 'failure'
+        if: steps.plan.outputs.exitcode == '1'
         run: exit 1
 
   terraform-apply:
     name: Terraform Apply
     needs: terraform-plan
+    if: needs.terraform-plan.outputs.has-changes == 'true'
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     permissions:
