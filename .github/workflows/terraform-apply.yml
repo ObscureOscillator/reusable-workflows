@@ -92,7 +92,10 @@ jobs:
           terraform plan -no-color -detailed-exitcode -out=tfplan
           TF_EXIT_CODE=$?
           echo "exitcode=$TF_EXIT_CODE" >> $GITHUB_OUTPUT
-          exit $TF_EXIT_CODE
+          if [ "$TF_EXIT_CODE" -eq 1 ]; then
+            exit 1
+          fi
+          exit 0
         continue-on-error: true
 
       - name: Upload Plan Artifact
