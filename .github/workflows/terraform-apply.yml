@@ -88,14 +88,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          set +e
           terraform plan -no-color -detailed-exitcode -out=tfplan
-          TF_EXIT_CODE=$?
-          echo "exitcode=$TF_EXIT_CODE" >> $GITHUB_OUTPUT
-          if [ "$TF_EXIT_CODE" -eq 1 ]; then
-            exit 1
-          fi
-          exit 0
+          exit_code=${PIPESTATUS[0]}
+          exit $exit_code
         continue-on-error: true
 
       - name: Upload Plan Artifact
