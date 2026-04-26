@@ -44,7 +44,7 @@ jobs:
           token: ${{ secrets.GH_TOKEN }}
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.AWS_ACCESS_SECRET }}
@@ -96,14 +96,14 @@ jobs:
         continue-on-error: true
 
       - name: Upload Plan Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tfplan
           path: ${{ inputs.working-directory }}/tfplan
           retention-days: 1
 
       - name: Post Plan Summary
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
@@ -149,7 +149,7 @@ jobs:
           token: ${{ secrets.GH_TOKEN }}
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.AWS_ACCESS_SECRET }}
@@ -170,7 +170,7 @@ jobs:
             -backend-config="encrypt=true"
 
       - name: Download Plan Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: tfplan
           path: ${{ inputs.working-directory }}
@@ -183,7 +183,7 @@ jobs:
         continue-on-error: true
 
       - name: Post Apply Summary
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
