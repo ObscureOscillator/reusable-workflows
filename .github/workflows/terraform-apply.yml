@@ -25,13 +25,14 @@ on:
         required: true
 
 jobs:
-  terraform-apply:
-    name: Terraform Apply
+  terraform-plan:
+    name: Terraform Plan
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
+    outputs:
+      terraform-version: ${{ steps.check_tf_version.outputs.terraform-version }}
 
     steps:
       - name: Checkout
@@ -84,6 +85,84 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         run: terraform plan -no-color -out=tfplan
+        continue-on-error: true
+
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: ${{ inputs.working-directory }}/tfplan
+          retention-days: 1
+
+      - name: Post Plan Summary
+        uses: actions/github-script@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        with:
+          script: |
+            const output = `#### Terraform Plan \`${{ steps.plan.outcome }}\`
+            <details><summary>Show Plan</summary>
+
+            \`\`\`\n
+            ${{ steps.plan.outputs.stdout }}
+            \`\`\`
+
+            </details>
+
+            *Triggered by: @${{ github.actor }}, Working directory: \`${{ inputs.working-directory }}\`*`;
+
+            github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: output
+            });
+
+      - name: Terraform Plan Status
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+
+  terraform-apply:
+    name: Terraform Apply
+    needs: terraform-plan
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_ACCESS_SECRET }}
+          aws-region: ${{ inputs.aws-region }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ needs.terraform-plan.outputs.terraform-version }}
+
+      - name: Terraform Init
+        id: init
+        run: |
+          terraform init \
+            -backend-config="bucket=awsjlb-tfstate" \
+            -backend-config="key=${{ github.event.repository.name }}/${{ inputs.environment }}.tfstate" \
+            -backend-config="region=${{ inputs.aws-region }}" \
+            -backend-config="encrypt=true"
+
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: ${{ inputs.working-directory }}
 
       - name: Terraform Apply
         id: apply
@@ -94,6 +173,8 @@ jobs:
 
       - name: Post Apply Summary
         uses: actions/github-script@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
           script: |
             const output = `#### Terraform Apply \`${{ steps.apply.outcome }}\`
