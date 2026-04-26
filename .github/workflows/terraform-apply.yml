@@ -10,7 +10,8 @@ on:
       environment:
         description: "Deployment environment (e.g. dev, staging, prod)"
         type: string
-        required: false
+        required: true
+        default: "prod"
       aws-region:
         description: "AWS region for the S3 state backend"
         type: string
