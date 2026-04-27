@@ -168,7 +168,7 @@ jobs:
             -backend-config="encrypt=true"
 
       - name: Download Plan Artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: tfplan
           path: ${{ inputs.working-directory }}
